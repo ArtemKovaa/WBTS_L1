@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -18,17 +17,14 @@ func main() {
 		log.Fatal("Incorrect program execution time")
 	}
 
-	wg := sync.WaitGroup{}
 	ch := make(chan int)
 
-	wg.Go(func() {
-		consumer(n, ch)
-	})
-	wg.Go(func() {
-		producer(n, ch)
-	})
+	go producer(n, ch)
 
-	wg.Wait()
+	for v := range ch {
+		log.Printf("Consumed: %d", v)
+	}
+	
 	log.Println("Program successfully executed")
 }
 
@@ -38,24 +34,12 @@ func producer(workingTime int, ch chan<- int) {
 		select {
 		case <-timeout:
 			log.Printf("Producer stopped after %d seconds", workingTime)
+			close(ch)
 			return
 		default:
 			ch <- i
 			log.Printf("Produced: %d", i)
 		}
 		time.Sleep(200 * time.Millisecond)
-	}
-}
-
-func consumer(workingTime int, ch <-chan int) {
-	timeout := time.After(time.Duration(workingTime) * time.Second)
-	for {
-		select {
-		case v := <-ch:
-			log.Printf("Consumed: %d", v)
-		case <-timeout:
-			log.Printf("Consumer stopped after %d seconds", workingTime)
-			return
-		}
 	}
 }
